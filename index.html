@@ -5,18 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Video + Sensor Recorder</title>
   <style>
-    body { font-family: sans-serif; text-align: center; background: #f0f8ff; }
+    body { font-family: sans-serif; text-align: center; background: #fff8f0; }
     video { width: 90%; max-width: 500px; margin-top: 1rem; border: 2px solid #333; border-radius: 10px; }
     button { margin: 1rem; padding: 1rem; font-size: 1rem; border-radius: 8px; }
     #enableSensorsBtn { background: #4CAF50; color: white; }
-    .banner { background: #28a745; color: white; padding: 0.5rem; font-weight: bold; }
+    .banner { background: #ff6600; color: white; padding: 0.5rem; font-weight: bold; }
   </style>
 </head>
 <body>
-  <div class="banner">v2 – Sensors Enabled Fix</div>
+  <div class="banner">v3 – iOS Video Fix (no mic)</div>
 
   <h2>Video + Sensor Recorder</h2>
-  <video id="preview" autoplay playsinline></video><br>
+  <video id="preview" autoplay playsinline muted></video><br>
   <button id="enableSensorsBtn">Enable Sensors</button><br>
   <button id="startBtn">Start Recording</button>
   <button id="stopBtn" disabled>Stop Recording</button>
@@ -35,9 +35,13 @@
 
     async function initCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        // Disable audio to avoid mic feedback
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         video.srcObject = stream;
-        mediaRecorder = new MediaRecorder(stream);
+
+        // Use MIME type that iOS Safari prefers
+        const options = { mimeType: "video/mp4" };
+        mediaRecorder = new MediaRecorder(stream, options);
 
         mediaRecorder.ondataavailable = e => {
           if (e.data.size > 0) recordedChunks.push(e.data);
@@ -45,11 +49,11 @@
 
         mediaRecorder.onstop = () => {
           // Save video
-          const blob = new Blob(recordedChunks, { type: "video/webm" });
+          const blob = new Blob(recordedChunks, { type: "video/mp4" });
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
-          a.download = "recording.webm";
+          a.download = "recording.mp4"; // better for iOS
           a.textContent = "Download Video";
           downloads.appendChild(a);
           downloads.appendChild(document.createElement("br"));
@@ -72,25 +76,13 @@
       }
     }
 
-    // Motion sensor handler with explicit permission button
     function initSensors() {
       if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
         enableBtn.style.display = "inline-block";
         enableBtn.onclick = () => {
           DeviceMotionEvent.requestPermission().then(response => {
             if (response === "granted") {
-              window.addEventListener("devicemotion", event => {
-                if (recording) {
-                  const t = Date.now();
-                  const ax = event.acceleration.x || 0;
-                  const ay = event.acceleration.y || 0;
-                  const az = event.acceleration.z || 0;
-                  const gx = event.rotationRate.alpha || 0;
-                  const gy = event.rotationRate.beta || 0;
-                  const gz = event.rotationRate.gamma || 0;
-                  sensorData.push({ t, ax, ay, az, gx, gy, gz });
-                }
-              });
+              window.addEventListener("devicemotion", logMotion);
               enableBtn.style.display = "none";
             } else {
               alert("Motion permission denied");
@@ -98,19 +90,21 @@
           });
         };
       } else {
-        window.addEventListener("devicemotion", event => {
-          if (recording) {
-            const t = Date.now();
-            const ax = event.acceleration.x || 0;
-            const ay = event.acceleration.y || 0;
-            const az = event.acceleration.z || 0;
-            const gx = event.rotationRate.alpha || 0;
-            const gy = event.rotationRate.beta || 0;
-            const gz = event.rotationRate.gamma || 0;
-            sensorData.push({ t, ax, ay, az, gx, gy, gz });
-          }
-        });
+        window.addEventListener("devicemotion", logMotion);
         enableBtn.style.display = "none";
+      }
+    }
+
+    function logMotion(event) {
+      if (recording) {
+        const t = Date.now();
+        const ax = event.acceleration.x || 0;
+        const ay = event.acceleration.y || 0;
+        const az = event.acceleration.z || 0;
+        const gx = event.rotationRate.alpha || 0;
+        const gy = event.rotationRate.beta || 0;
+        const gz = event.rotationRate.gamma || 0;
+        sensorData.push({ t, ax, ay, az, gx, gy, gz });
       }
     }
 

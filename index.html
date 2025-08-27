@@ -8,11 +8,13 @@
     body { font-family: sans-serif; text-align: center; background: #f9f9f9; }
     video { width: 90%; max-width: 500px; margin-top: 1rem; border: 2px solid #333; border-radius: 10px; }
     button { margin: 1rem; padding: 1rem; font-size: 1rem; border-radius: 8px; }
+    #enableSensorsBtn { background: #4CAF50; color: white; }
   </style>
 </head>
 <body>
   <h2>Video + Sensor Recorder</h2>
   <video id="preview" autoplay playsinline></video><br>
+  <button id="enableSensorsBtn">Enable Sensors</button><br>
   <button id="startBtn">Start Recording</button>
   <button id="stopBtn" disabled>Stop Recording</button>
   <div id="downloads"></div>
@@ -26,6 +28,7 @@
     const startBtn = document.getElementById("startBtn");
     const stopBtn = document.getElementById("stopBtn");
     const downloads = document.getElementById("downloads");
+    const enableBtn = document.getElementById("enableSensorsBtn");
 
     async function initCamera() {
       try {
@@ -66,26 +69,32 @@
       }
     }
 
-    // Motion sensor handler
+    // Motion sensor handler with explicit permission button
     function initSensors() {
-      if (typeof DeviceMotionEvent.requestPermission === "function") {
-        // iOS requires permission
-        DeviceMotionEvent.requestPermission().then(response => {
-          if (response === "granted") {
-            window.addEventListener("devicemotion", event => {
-              if (recording) {
-                const t = Date.now();
-                const ax = event.acceleration.x || 0;
-                const ay = event.acceleration.y || 0;
-                const az = event.acceleration.z || 0;
-                const gx = event.rotationRate.alpha || 0;
-                const gy = event.rotationRate.beta || 0;
-                const gz = event.rotationRate.gamma || 0;
-                sensorData.push({ t, ax, ay, az, gx, gy, gz });
-              }
-            });
-          }
-        });
+      if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
+        // iOS: needs explicit permission
+        enableBtn.style.display = "inline-block";
+        enableBtn.onclick = () => {
+          DeviceMotionEvent.requestPermission().then(response => {
+            if (response === "granted") {
+              window.addEventListener("devicemotion", event => {
+                if (recording) {
+                  const t = Date.now();
+                  const ax = event.acceleration.x || 0;
+                  const ay = event.acceleration.y || 0;
+                  const az = event.acceleration.z || 0;
+                  const gx = event.rotationRate.alpha || 0;
+                  const gy = event.rotationRate.beta || 0;
+                  const gz = event.rotationRate.gamma || 0;
+                  sensorData.push({ t, ax, ay, az, gx, gy, gz });
+                }
+              });
+              enableBtn.style.display = "none"; // hide after enabling
+            } else {
+              alert("Motion permission denied");
+            }
+          });
+        };
       } else {
         // Non-iOS browsers
         window.addEventListener("devicemotion", event => {
@@ -100,6 +109,7 @@
             sensorData.push({ t, ax, ay, az, gx, gy, gz });
           }
         });
+        enableBtn.style.display = "none"; // no need for button
       }
     }
 

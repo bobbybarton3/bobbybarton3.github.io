@@ -5,13 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Video + Sensor Recorder</title>
   <style>
-    body { font-family: sans-serif; text-align: center; background: #f9f9f9; }
+    body { font-family: sans-serif; text-align: center; background: #f0f8ff; }
     video { width: 90%; max-width: 500px; margin-top: 1rem; border: 2px solid #333; border-radius: 10px; }
     button { margin: 1rem; padding: 1rem; font-size: 1rem; border-radius: 8px; }
     #enableSensorsBtn { background: #4CAF50; color: white; }
+    .banner { background: #28a745; color: white; padding: 0.5rem; font-weight: bold; }
   </style>
 </head>
 <body>
+  <div class="banner">v2 – Sensors Enabled Fix</div>
+
   <h2>Video + Sensor Recorder</h2>
   <video id="preview" autoplay playsinline></video><br>
   <button id="enableSensorsBtn">Enable Sensors</button><br>
@@ -72,7 +75,6 @@
     // Motion sensor handler with explicit permission button
     function initSensors() {
       if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
-        // iOS: needs explicit permission
         enableBtn.style.display = "inline-block";
         enableBtn.onclick = () => {
           DeviceMotionEvent.requestPermission().then(response => {
@@ -89,14 +91,13 @@
                   sensorData.push({ t, ax, ay, az, gx, gy, gz });
                 }
               });
-              enableBtn.style.display = "none"; // hide after enabling
+              enableBtn.style.display = "none";
             } else {
               alert("Motion permission denied");
             }
           });
         };
       } else {
-        // Non-iOS browsers
         window.addEventListener("devicemotion", event => {
           if (recording) {
             const t = Date.now();
@@ -109,7 +110,7 @@
             sensorData.push({ t, ax, ay, az, gx, gy, gz });
           }
         });
-        enableBtn.style.display = "none"; // no need for button
+        enableBtn.style.display = "none";
       }
     }
 
